@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<body>
+	<!-- Setup screen -->
+    <div id="setup">
+  		<h1>Canvas Dashboard</h1>
+		<p>Paste your Canvas API token to get started.</p>
+		<input id="token" placeholder="Your API token" />
+        <button id="connectBtn">Connect</button>
+        <p id="errorMsg"></p>
+    </div>
+
+	<!-- Dashboard screen (hidden until connected) -->
+    <div id="dashboard" style="display: none;">
+        <header>
+            <h1>Assignments</h1>
+            <button id="disconnectBtn">Disconnect</button>
+        </header>
+
+        <section id="summary">
+        <!-- due soon count, this week count, etc -->
+        </section>
+
+        <section id="assignmentList">
+        <!-- cards get injected here by JavaScript -->
+        </section>
+    </div>
+
+    <script>
+        const BASE_URL = "https://canvas.instructure.com/api/v1";
+
+        document.getElementById("connectBtn").addEventListener("click", async function() {
+            const token = document.getElementById("token").value;
+            const response = await fetch(BASE_URL + "/courses?per_page=100", {
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+            const courses = await response.json();
+            console.log(courses);
+        });
+    </script>
+</body>
