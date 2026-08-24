@@ -1,2 +1,30 @@
 # CanvasTool
-A simple webpage thing to display upcoming, and overdue assignments.
+A simple webpage thing to display data about the user's canvas account, including assignments, assignment status, classes, courses, grades, and more.
+
+v1 shows just courses + current grades. The UI is intentionally rough right now — this is a functional skeleton to iterate on, not a design pass.
+
+## How it works
+
+Canvas's API doesn't send CORS headers, so a browser can't call it directly from a page hosted elsewhere. This repo is split in two pieces to work around that:
+
+- **Static site** (`index.html`, `app.js`) — hosted on GitHub Pages. You enter your Canvas domain and a Personal Access Token (PAT) once; both are saved only in your own browser's `localStorage` and never sent anywhere except the proxy below.
+- **`worker/`** — a tiny Cloudflare Worker that does nothing but forward your request to your Canvas instance and add the missing CORS header back onto the response. It never stores or logs your token or domain, and only forwards to `*.instructure.com` hosts.
+
+Each person who uses the hosted page brings their own domain + token, so no shared backend or database is needed.
+
+## Setup
+
+1. **Get a Canvas Personal Access Token**: in Canvas, go to Account → Settings → scroll to "Approved Integrations" → "New Access Token".
+2. **Deploy the worker** (one-time, needs a free Cloudflare account):
+   ```
+   cd worker
+   npx wrangler deploy
+   ```
+   Copy the resulting `*.workers.dev` URL.
+3. **Point the site at your worker**: open `app.js` and set `PROXY_URL` to the URL from step 2.
+4. **Enable GitHub Pages**: repo Settings → Pages → deploy from `main` / root.
+5. Visit the page, open Settings, enter your Canvas domain (e.g. `district.instructure.com`) and the token from step 1.
+
+## Resources
+
+[Canvas developer docs](https://developerdocs.instructure.com/services/canvas)
