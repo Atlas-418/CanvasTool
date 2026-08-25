@@ -4,7 +4,17 @@
   --color-border: #999;
   --color-link: blue;
   --color-active-bg: #ddd;
+  --color-hover-bg: #ddd;
+  --color-card-bg: #f5f5f5;
+  --color-grade-good: seagreen;
+  --color-grade-mid: goldenrod;
+  --color-grade-bad: crimson;
+  --color-overdue: crimson;
   --font-size-base: 1em;
+  --font-size-primary: 1.15em;
+  --font-size-secondary: 0.85em;
+  --font-family-base: "Noto Sans", sans-serif;
+  --font-family-mono: "Noto Sans Mono", monospace;
   --spacing-unit: 0.5em;
 }
 
@@ -12,19 +22,23 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-size: var(--font-size-base);
+  font-family: var(--font-family-base);
 }
 
 input[type="radio"] {
   display: none;
 }
 
-.tabs label {
+.tabs > label {
   display: inline-block;
   padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
   border: 1px solid var(--color-border);
   cursor: pointer;
 }
-.tabs input:checked + label {
+.tabs > label:hover {
+  background: var(--color-hover-bg);
+}
+.tabs > input:checked + label {
   background: var(--color-active-bg);
   font-weight: bold;
 }
@@ -35,8 +49,17 @@ input[type="radio"] {
   padding: calc(var(--spacing-unit) * 2);
 }
 #tab-courses:checked ~ #panel-courses,
+#tab-assignments:checked ~ #panel-assignments,
 #tab-classes:checked ~ #panel-classes,
 #tab-settings:checked ~ #panel-settings {
+  display: block;
+}
+/* Keeps the Courses panel visible even while #tab-courses itself is
+   unchecked (JS unchecks it while viewing a course's detail screen, so
+   re-clicking "Courses" is meaningful — see app.js). Without this, that
+   uncheck would hide the panel out from under the detail screen it's
+   showing. */
+.tabs:has(input[name="course-view"]:checked:not(#course-view-list)) #panel-courses {
   display: block;
 }
 
@@ -52,9 +75,81 @@ input[name="course-view"]:checked + .course-screen {
   display: block;
 }
 
-.course-list-item,
 .back-link {
   cursor: pointer;
   color: var(--color-link);
   text-decoration: underline;
+}
+
+/* Shrink-to-fit: without this, #course-list (and everything in it) just
+   fills 100% of the panel's width, cascading down to every card. Making
+   it `table` computes its width from its widest child instead — and since
+   cards still default to filling their parent, they all end up matching
+   that one shrunk width, uniformly, across every term group. */
+#course-list {
+  display: table;
+}
+
+#course-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.course-card {
+  display: block;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: calc(var(--spacing-unit) * 2);
+  margin-bottom: var(--spacing-unit);
+  background: var(--color-card-bg);
+}
+.course-card:hover {
+  background: var(--color-hover-bg);
+}
+
+.course-card-top,
+.course-card-mid,
+.course-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 2);
+}
+.course-card-mid,
+.course-card-bottom {
+  margin-top: var(--spacing-unit);
+  font-size: var(--font-size-secondary);
+}
+
+.course-card-code {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-secondary);
+}
+.course-card-name {
+  flex: 1;
+  text-align: center;
+  font-size: var(--font-size-primary);
+  font-weight: bold;
+}
+
+.course-card-grade {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  justify-content: center;
+  width: 2.2em;
+  height: 2.2em;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  font-size: var(--font-size-primary);
+  font-weight: bold;
+}
+.course-card-grade.grade-good { color: var(--color-grade-good); }
+.course-card-grade.grade-mid { color: var(--color-grade-mid); }
+.course-card-grade.grade-bad { color: var(--color-grade-bad); }
+
+.course-card-overdue {
+  color: var(--color-overdue);
 }

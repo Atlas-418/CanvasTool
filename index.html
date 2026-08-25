@@ -3,18 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <title>CanvasTool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Noto+Sans+Mono:wght@400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<h1>CanvasTool</h1>
 
 <div class="tabs">
   <input type="radio" name="main-tabs" id="tab-courses" checked>
   <label for="tab-courses">Courses</label>
 
+  <input type="radio" name="main-tabs" id="tab-assignments">
+  <label for="tab-assignments">Assignments</label>
+
   <input type="radio" name="main-tabs" id="tab-classes">
-  <label for="tab-classes">Live Classes</label>
+  <label for="tab-classes">Classes</label>
 
   <input type="radio" name="main-tabs" id="tab-settings">
   <label for="tab-settings">Settings</label>
@@ -26,6 +30,14 @@
       <div id="status"></div>
       <div id="course-list"></div>
     </div>
+  </div>
+
+  <div class="panel" id="panel-assignments">
+    <h2>Assignments</h2>
+    <p>
+      Coming soon...
+      This one for sure!
+    </p>
   </div>
 
   <div class="panel" id="panel-classes">

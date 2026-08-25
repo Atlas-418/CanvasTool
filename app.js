@@ -7,6 +7,7 @@ const TOKEN_KEY = "canvastool.token";
 const tabCourses = document.getElementById("tab-courses");
 const tabSettings = document.getElementById("tab-settings");
 const panelCourses = document.getElementById("panel-courses");
+const courseViewList = document.getElementById("course-view-list");
 const settingsForm = document.getElementById("settings-form");
 const domainInput = document.getElementById("domain");
 const tokenInput = document.getElementById("token");
@@ -36,6 +37,30 @@ function clearCourseScreens() {
   panelCourses.querySelectorAll(".course-screen:not(#course-screen-list)").forEach((el) => el.remove());
   panelCourses.querySelectorAll('input[name="course-view"]:not(#course-view-list)').forEach((el) => el.remove());
 }
+
+// Re-clicking "Courses" while already there is otherwise a no-op — this
+// makes it double as a way back out of a course's detail screen, matching
+// the "← Back to Courses" link.
+tabCourses.addEventListener("change", () => {
+  if (tabCourses.checked) courseViewList.checked = true;
+});
+// Restores the tab's active look once back on the list, whichever way you
+// got there (the back link, or re-clicking the tab above).
+courseViewList.addEventListener("change", () => {
+  if (courseViewList.checked) tabCourses.checked = true;
+});
+
+// Navigating to any OTHER top-level tab while a course detail is open needs
+// to reset the course view too — otherwise its radio stays checked, and the
+// :has() rule in style.css would keep that detail screen showing underneath
+// whichever tab you switched to.
+document.querySelectorAll('input[name="main-tabs"]').forEach((tab) => {
+  if (tab !== tabCourses) {
+    tab.addEventListener("change", () => {
+      if (tab.checked) courseViewList.checked = true;
+    });
+  }
+});
 
 function setStatus(message) {
   statusEl.textContent = message;
@@ -78,32 +103,18 @@ function formatAssignmentStatus(assignment) {
   return "Not submitted";
 }
 
-async function loadAssignments(course, listEl) {
-  listEl.innerHTML = "<li>Loading assignments...</li>";
-
-  const creds = getSavedCredentials();
+async function fetchAssignments(course, creds) {
   const path = `/api/v1/courses/${course.id}/assignments?order_by=due_at&include[]=submission`;
+  const response = await canvasFetch(path, creds);
+  if (!response.ok) throw new Error(`status ${response.status}`);
+  return response.json();
+}
 
-  let response;
-  try {
-    response = await canvasFetch(path, creds);
-  } catch (err) {
-    listEl.innerHTML = "<li>Network error loading assignments.</li>";
-    return false;
-  }
-
-  if (!response.ok) {
-    listEl.innerHTML = `<li>Failed to load assignments (${response.status}).</li>`;
-    return false;
-  }
-
-  const assignments = await response.json();
-
+function renderAssignmentList(assignments, listEl) {
   if (!Array.isArray(assignments) || assignments.length === 0) {
     listEl.innerHTML = "<li>No assignments.</li>";
-    return true;
+    return;
   }
-
   listEl.innerHTML = "";
   for (const assignment of assignments) {
     const status = formatAssignmentStatus(assignment);
@@ -111,7 +122,77 @@ async function loadAssignments(course, listEl) {
     li.textContent = `${assignment.name} — Due: ${formatDueDate(assignment.due_at)}${status ? ` — ${status}` : ""}`;
     listEl.appendChild(li);
   }
-  return true;
+}
+
+// Total possible points only counts graded assignments — ungraded/future
+// work shouldn't drag down a "points earned so far" style stat.
+function summarizeAssignments(assignments) {
+  let earned = 0;
+  let possible = 0;
+  let overdue = 0;
+  for (const assignment of assignments) {
+    const submission = assignment.submission;
+    const hasPossible = typeof assignment.points_possible === "number" && assignment.points_possible > 0;
+    if (submission && submission.workflow_state === "graded") {
+      if (typeof submission.score === "number") earned += submission.score;
+      if (hasPossible) possible += assignment.points_possible;
+    }
+    // Canvas's own "missing" flag doesn't cover the case where a teacher
+    // manually grades a zero for unsubmitted work instead of leaving it
+    // ungraded — a graded 0/# counts as overdue too.
+    const isZeroScored = submission && submission.workflow_state === "graded" && submission.score === 0 && hasPossible;
+    if ((submission && submission.missing) || isZeroScored) overdue++;
+  }
+  return { earned, possible, overdue };
+}
+
+// Computed from our own earned/possible ratio rather than Canvas's
+// computed_current_grade, so the letter always matches the points shown
+// and can be colored consistently.
+function letterGrade(percent) {
+  if (percent >= 97) return "A+";
+  if (percent >= 93) return "A";
+  if (percent >= 90) return "A-";
+  if (percent >= 87) return "B+";
+  if (percent >= 83) return "B";
+  if (percent >= 80) return "B-";
+  if (percent >= 77) return "C+";
+  if (percent >= 73) return "C";
+  if (percent >= 70) return "C-";
+  if (percent >= 67) return "D+";
+  if (percent >= 63) return "D";
+  if (percent >= 60) return "D-";
+  return "F";
+}
+
+function gradeColorClass(letter) {
+  const first = letter.charAt(0);
+  if (first === "A" || first === "B") return "grade-good";
+  if (first === "C") return "grade-mid";
+  return "grade-bad";
+}
+
+// Course names on this instance follow "<subject> - <teacher last name>",
+// e.g. "ENG030AD Creative Writing - Jenkins". Walk back from the end to the
+// last " - " and split there, so the display name doesn't redundantly repeat
+// the teacher we already show on its own line. The parsed teacher segment is
+// only a last-name fallback for when the teachers API field is empty — it
+// never has a first name to offer, unlike the API.
+function splitCourseName(name) {
+  const idx = name.lastIndexOf(" - ");
+  if (idx === -1) return { displayName: name, teacherRaw: "" };
+  return { displayName: name.slice(0, idx).trim(), teacherRaw: name.slice(idx + 3).trim() };
+}
+
+// The "class code" shown on a card isn't a separate field (course_code
+// duplicates the name here) — it's the leading word of the display name
+// itself, e.g. "TCH468" in "TCH468 CompTia A+ Core 2". Single-word names
+// like "Homeroom" have no such prefix, so leave those alone rather than
+// splitting off the only word there is.
+function splitLeadingCode(name) {
+  const words = name.split(/\s+/);
+  if (words.length < 2) return { codePrefix: "", rest: name };
+  return { codePrefix: words[0], rest: words.slice(1).join(" ") };
 }
 
 async function loadCourses() {
@@ -126,7 +207,7 @@ async function loadCourses() {
   courseList.innerHTML = "";
   clearCourseScreens();
 
-  const url = `${PROXY_URL}/api/v1/courses?enrollment_state=active&include[]=total_scores&include[]=term`;
+  const url = `${PROXY_URL}/api/v1/courses?enrollment_state=active&include[]=total_scores&include[]=term&include[]=teachers`;
 
   let response;
   try {
@@ -158,6 +239,17 @@ async function loadCourses() {
     return;
   }
 
+  setStatus("Loading assignments...");
+
+  const assignmentsByCourseId = new Map();
+  await Promise.all(courses.map(async (course) => {
+    try {
+      assignmentsByCourseId.set(course.id, await fetchAssignments(course, creds));
+    } catch (err) {
+      assignmentsByCourseId.set(course.id, null);
+    }
+  }));
+
   setStatus("");
 
   const termGroups = new Map();
@@ -187,21 +279,81 @@ async function loadCourses() {
     courseList.appendChild(ul);
 
     for (const course of termGroups.get(termName).courses) {
-      const enrollment = (course.enrollments && course.enrollments[0]) || {};
-      const grade = enrollment.computed_current_grade || enrollment.computed_current_score;
-      const gradeText = grade !== undefined && grade !== null ? grade : "—";
-      const term = termName;
-
       const codeSuffix = course.course_code && course.course_code !== course.name
         ? ` (${course.course_code})`
         : "";
+      const { displayName, teacherRaw } = splitCourseName(course.name);
+      const { codePrefix, rest: nameRest } = splitLeadingCode(displayName);
+      // Prefer the full name from the teachers API (the course-name suffix
+      // only ever has a last name); fall back to the parsed one if a course
+      // has no teacher data for some reason.
+      const teacherApiName = (course.teachers && course.teachers[0] && course.teachers[0].display_name) || "";
+      const teacherName = teacherApiName || teacherRaw;
+
+      const assignments = assignmentsByCourseId.get(course.id);
+      const summary = assignments ? summarizeAssignments(assignments) : null;
+
+      let gradeLabel = "—";
+      let gradeColor = "";
+      if (summary && summary.possible > 0) {
+        const percent = (summary.earned / summary.possible) * 100;
+        gradeLabel = letterGrade(percent);
+        gradeColor = gradeColorClass(gradeLabel);
+      }
 
       const radioId = `course-view-${course.id}`;
 
       const listLabel = document.createElement("label");
-      listLabel.className = "course-list-item";
+      listLabel.className = "course-card";
       listLabel.htmlFor = radioId;
-      listLabel.textContent = `${course.name}${codeSuffix} — Grade: ${gradeText}`;
+
+      const top = document.createElement("div");
+      top.className = "course-card-top";
+      // Only added when there's actually a leading code to show — an empty
+      // span here still eats a flex `gap` before the name, throwing off its
+      // left alignment relative to the row below.
+      if (codePrefix) {
+        const codeSpan = document.createElement("span");
+        codeSpan.className = "course-card-code";
+        codeSpan.textContent = codePrefix;
+        top.appendChild(codeSpan);
+      }
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "course-card-name";
+      nameSpan.textContent = nameRest;
+      const gradeSpan = document.createElement("span");
+      gradeSpan.className = `course-card-grade ${gradeColor}`;
+      gradeSpan.textContent = gradeLabel;
+      top.append(nameSpan, gradeSpan);
+      listLabel.appendChild(top);
+
+      const mid = document.createElement("div");
+      mid.className = "course-card-mid";
+      const teacherSpan = document.createElement("span");
+      teacherSpan.className = "course-card-teacher";
+      teacherSpan.textContent = teacherName;
+      mid.appendChild(teacherSpan);
+      listLabel.appendChild(mid);
+
+      // Points and overdue are both assignment-derived stats, grouped
+      // together at the bottom rather than points sitting up in the mid
+      // row. Always shown, even at zero/no-data, so a card's layout doesn't
+      // shift depending on whether it has graded work yet.
+      const bottom = document.createElement("div");
+      bottom.className = "course-card-bottom";
+
+      const overdueSpan = document.createElement("span");
+      overdueSpan.className = "course-card-overdue";
+      overdueSpan.textContent = `Overdue: ${summary ? summary.overdue : "—"}`;
+      bottom.appendChild(overdueSpan);
+
+      const pointsSpan = document.createElement("span");
+      pointsSpan.className = "course-card-points";
+      pointsSpan.textContent = summary && summary.possible > 0 ? `${summary.earned}/${summary.possible}` : "0/-";
+      bottom.appendChild(pointsSpan);
+
+      listLabel.appendChild(bottom);
+
       const li = document.createElement("li");
       li.appendChild(listLabel);
       ul.appendChild(li);
@@ -210,6 +362,9 @@ async function loadCourses() {
       radio.type = "radio";
       radio.name = "course-view";
       radio.id = radioId;
+      radio.addEventListener("change", () => {
+        if (radio.checked) tabCourses.checked = false;
+      });
 
       const screen = document.createElement("div");
       screen.className = "course-screen";
@@ -221,22 +376,20 @@ async function loadCourses() {
       screen.appendChild(backLink);
 
       const heading = document.createElement("h2");
-      heading.textContent = course.name;
+      heading.textContent = `${displayName}${codeSuffix}`;
       screen.appendChild(heading);
 
       const gradeLine = document.createElement("p");
-      gradeLine.textContent = `${term} — Grade: ${gradeText}`;
+      gradeLine.textContent = `${termName}${teacherName ? ` — ${teacherName}` : ""} — Grade: ${gradeLabel}`;
       screen.appendChild(gradeLine);
 
       const assignmentList = document.createElement("ul");
+      if (assignments) {
+        renderAssignmentList(assignments, assignmentList);
+      } else {
+        assignmentList.innerHTML = "<li>Failed to load assignments.</li>";
+      }
       screen.appendChild(assignmentList);
-
-      let loaded = false;
-      radio.addEventListener("change", async () => {
-        if (radio.checked && !loaded) {
-          loaded = await loadAssignments(course, assignmentList);
-        }
-      });
 
       panelCourses.appendChild(radio);
       panelCourses.appendChild(screen);
