@@ -30,6 +30,13 @@ Each person who uses the hosted page brings their own domain + token, so no shar
 - [x] Get courses / grades
 - [ ] Get live class times 
 - [ ] Make it look nice
+  - [ ] courses
+    - [ ] assignments
+    - [x] the courses themselves
+  - [ ] assignments
+  - [ ] settings
+    - [ ] themes
+- [ ] onboarding page?
 - [ ] link assignments to the corresponding page in canvas
 - [ ] Figure out how to get proper Oauth
   - dev key? idk
