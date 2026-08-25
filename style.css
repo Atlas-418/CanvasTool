@@ -1,0 +1,60 @@
+:root {
+  --color-bg: #fff;
+  --color-text: #000;
+  --color-border: #999;
+  --color-link: blue;
+  --color-active-bg: #ddd;
+  --font-size-base: 1em;
+  --spacing-unit: 0.5em;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+input[type="radio"] {
+  display: none;
+}
+
+.tabs label {
+  display: inline-block;
+  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+}
+.tabs input:checked + label {
+  background: var(--color-active-bg);
+  font-weight: bold;
+}
+
+.panel {
+  display: none;
+  border: 1px solid var(--color-border);
+  padding: calc(var(--spacing-unit) * 2);
+}
+#tab-courses:checked ~ #panel-courses,
+#tab-classes:checked ~ #panel-classes,
+#tab-settings:checked ~ #panel-settings {
+  display: block;
+}
+
+/* Per-course screens: unlike the top-level tabs above (a fixed, known
+   pair), the number of courses is dynamic, so this can't use per-id CSS
+   rules. Instead each course's radio is immediately followed by its own
+   .course-screen div, and one generic adjacent-sibling rule covers all
+   of them regardless of how many there are. */
+.course-screen {
+  display: none;
+}
+input[name="course-view"]:checked + .course-screen {
+  display: block;
+}
+
+.course-list-item,
+.back-link {
+  cursor: pointer;
+  color: var(--color-link);
+  text-decoration: underline;
+}

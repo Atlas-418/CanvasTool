@@ -1,7 +1,7 @@
 # CanvasTool
 A simple webpage thing to display data about the user's canvas account, including assignments, assignment status, classes, courses, grades, and more.
 
-v1 shows just courses + current grades. The UI is intentionally rough right now — this is a functional skeleton to iterate on, not a design pass.
+Working on styling for now, sent an email asking for API help because I only half know what I'm doing with that. 
 
 ## How it works
 
@@ -24,6 +24,16 @@ Each person who uses the hosted page brings their own domain + token, so no shar
 3. **Point the site at your worker**: open `app.js` and set `PROXY_URL` to the URL from step 2.
 4. **Enable GitHub Pages**: repo Settings → Pages → deploy from `main` / root.
 5. Visit the page, open Settings, enter your Canvas domain (e.g. `district.instructure.com`) and the token from step 1.
+
+## To do
+
+- [ ] Get courses / grades
+- [ ] Get live class times 
+- [ ] Make it look nice
+- [ ] link assignments to the corresponding page in canvas
+- [ ] Figure out how to get proper Oauth
+  - dev key? idk
+  - can't ask user to generate api key due to TOS
 
 ## Resources
 

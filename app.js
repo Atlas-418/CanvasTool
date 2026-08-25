@@ -4,8 +4,9 @@ const PROXY_URL = "https://canvastool-proxy.twobraincellbeing.workers.dev/";
 const DOMAIN_KEY = "canvastool.domain";
 const TOKEN_KEY = "canvastool.token";
 
-const settingsPanel = document.getElementById("settings-panel");
-const settingsToggle = document.getElementById("settings-toggle");
+const tabCourses = document.getElementById("tab-courses");
+const tabSettings = document.getElementById("tab-settings");
+const panelCourses = document.getElementById("panel-courses");
 const settingsForm = document.getElementById("settings-form");
 const domainInput = document.getElementById("domain");
 const tokenInput = document.getElementById("token");
@@ -13,15 +14,11 @@ const clearButton = document.getElementById("clear-settings");
 const statusEl = document.getElementById("status");
 const courseList = document.getElementById("course-list");
 
-settingsToggle.addEventListener("click", () => {
-  settingsPanel.hidden = !settingsPanel.hidden;
-});
-
 settingsForm.addEventListener("submit", (event) => {
   event.preventDefault();
   localStorage.setItem(DOMAIN_KEY, domainInput.value.trim());
   localStorage.setItem(TOKEN_KEY, tokenInput.value.trim());
-  settingsPanel.hidden = true;
+  tabCourses.checked = true;
   loadCourses();
 });
 
@@ -31,9 +28,14 @@ clearButton.addEventListener("click", () => {
   domainInput.value = "";
   tokenInput.value = "";
   courseList.innerHTML = "";
+  clearCourseScreens();
   setStatus("Cleared saved domain and token.");
-  settingsPanel.hidden = false;
 });
+
+function clearCourseScreens() {
+  panelCourses.querySelectorAll(".course-screen:not(#course-screen-list)").forEach((el) => el.remove());
+  panelCourses.querySelectorAll('input[name="course-view"]:not(#course-view-list)').forEach((el) => el.remove());
+}
 
 function setStatus(message) {
   statusEl.textContent = message;
@@ -115,13 +117,14 @@ async function loadAssignments(course, listEl) {
 async function loadCourses() {
   const creds = getSavedCredentials();
   if (!creds) {
-    settingsPanel.hidden = false;
+    tabSettings.checked = true;
     return;
   }
   domainInput.value = creds.domain;
 
   setStatus("Loading courses...");
   courseList.innerHTML = "";
+  clearCourseScreens();
 
   const url = `${PROXY_URL}/api/v1/courses?enrollment_state=active&include[]=total_scores&include[]=term`;
 
@@ -140,7 +143,6 @@ async function loadCourses() {
 
   if (response.status === 401 || response.status === 403) {
     setStatus("Canvas rejected the request. Double-check your domain and token in Settings.");
-    settingsPanel.hidden = false;
     return;
   }
 
@@ -157,32 +159,88 @@ async function loadCourses() {
   }
 
   setStatus("");
+
+  const termGroups = new Map();
   for (const course of courses) {
-    const enrollment = (course.enrollments && course.enrollments[0]) || {};
-    const grade = enrollment.computed_current_grade || enrollment.computed_current_score;
-    const gradeText = grade !== undefined && grade !== null ? grade : "—";
-    const term = (course.term && course.term.name) || "";
+    const term = course.term || {};
+    const termName = term.name || "No term";
+    if (!termGroups.has(termName)) {
+      termGroups.set(termName, { startAt: term.start_at, endAt: term.end_at, courses: [] });
+    }
+    termGroups.get(termName).courses.push(course);
+  }
 
-    const codeSuffix = course.course_code && course.course_code !== course.name
-      ? ` (${course.course_code})`
-      : "";
+  const sortedTermNames = [...termGroups.keys()].sort((a, b) => {
+    const groupA = termGroups.get(a);
+    const groupB = termGroups.get(b);
+    const startDiff = new Date(groupB.startAt || 0) - new Date(groupA.startAt || 0);
+    if (startDiff !== 0) return startDiff;
+    return new Date(groupB.endAt || 0) - new Date(groupA.endAt || 0);
+  });
 
-    const details = document.createElement("details");
-    const summary = document.createElement("summary");
-    summary.textContent = `${course.name}${codeSuffix} — ${term} — Grade: ${gradeText}`;
-    const assignmentList = document.createElement("ul");
-    details.appendChild(summary);
-    details.appendChild(assignmentList);
+  for (const termName of sortedTermNames) {
+    const termHeading = document.createElement("h3");
+    termHeading.textContent = termName;
+    courseList.appendChild(termHeading);
 
-    details.addEventListener("toggle", async () => {
-      if (details.open && !details.dataset.loaded) {
-        details.dataset.loaded = await loadAssignments(course, assignmentList) ? "true" : "";
-      }
-    });
+    const ul = document.createElement("ul");
+    courseList.appendChild(ul);
 
-    const li = document.createElement("li");
-    li.appendChild(details);
-    courseList.appendChild(li);
+    for (const course of termGroups.get(termName).courses) {
+      const enrollment = (course.enrollments && course.enrollments[0]) || {};
+      const grade = enrollment.computed_current_grade || enrollment.computed_current_score;
+      const gradeText = grade !== undefined && grade !== null ? grade : "—";
+      const term = termName;
+
+      const codeSuffix = course.course_code && course.course_code !== course.name
+        ? ` (${course.course_code})`
+        : "";
+
+      const radioId = `course-view-${course.id}`;
+
+      const listLabel = document.createElement("label");
+      listLabel.className = "course-list-item";
+      listLabel.htmlFor = radioId;
+      listLabel.textContent = `${course.name}${codeSuffix} — Grade: ${gradeText}`;
+      const li = document.createElement("li");
+      li.appendChild(listLabel);
+      ul.appendChild(li);
+
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "course-view";
+      radio.id = radioId;
+
+      const screen = document.createElement("div");
+      screen.className = "course-screen";
+
+      const backLink = document.createElement("label");
+      backLink.className = "back-link";
+      backLink.htmlFor = "course-view-list";
+      backLink.textContent = "← Back to Courses";
+      screen.appendChild(backLink);
+
+      const heading = document.createElement("h2");
+      heading.textContent = course.name;
+      screen.appendChild(heading);
+
+      const gradeLine = document.createElement("p");
+      gradeLine.textContent = `${term} — Grade: ${gradeText}`;
+      screen.appendChild(gradeLine);
+
+      const assignmentList = document.createElement("ul");
+      screen.appendChild(assignmentList);
+
+      let loaded = false;
+      radio.addEventListener("change", async () => {
+        if (radio.checked && !loaded) {
+          loaded = await loadAssignments(course, assignmentList);
+        }
+      });
+
+      panelCourses.appendChild(radio);
+      panelCourses.appendChild(screen);
+    }
   }
 }
 

@@ -3,37 +3,59 @@
 <head>
 <meta charset="UTF-8">
 <title>CanvasTool</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
+
 <h1>CanvasTool</h1>
-<button id="settings-toggle">Settings</button>
 
-<section id="settings-panel" hidden>
-  <h2>Settings</h2>
-  <p>
-    Get a Personal Access Token from your Canvas account:
-    Account &rarr; Settings &rarr; "New Access Token" (Big blue button).
-  </p>
-  <form id="settings-form">
-    <div>
-      <label for="domain">Canvas domain (e.g. district.instructure.com)</label><br>
-      <input type="text" id="domain" placeholder="district.instructure.com" required>
+<div class="tabs">
+  <input type="radio" name="main-tabs" id="tab-courses" checked>
+  <label for="tab-courses">Courses</label>
+
+  <input type="radio" name="main-tabs" id="tab-classes">
+  <label for="tab-classes">Live Classes</label>
+
+  <input type="radio" name="main-tabs" id="tab-settings">
+  <label for="tab-settings">Settings</label>
+
+  <div class="panel" id="panel-courses">
+    <input type="radio" name="course-view" id="course-view-list" checked>
+    <div class="course-screen" id="course-screen-list">
+      <h2>Courses</h2>
+      <div id="status"></div>
+      <div id="course-list"></div>
     </div>
-    <div>
-      <label for="token">Personal Access Token</label><br>
-      <input type="password" id="token" required>
-    </div>
-    <button type="submit">Save</button>
-    <button type="button" id="clear-settings">Clear saved data</button>
-  </form>
-</section>
+  </div>
 
-<section id="status"></section>
+  <div class="panel" id="panel-classes">
+    <h2>Live Classes</h2>
+    <p>
+      Coming soon...
+      Probably
+    </p>
+  </div>
 
-<section id="courses">
-  <h2>Courses</h2>
-  <ul id="course-list"></ul>
-</section>
+  <div class="panel" id="panel-settings">
+    <h2>Settings</h2>
+    <p>
+      Get a Personal Access Token from your Canvas account:
+      Account &rarr; Settings &rarr; "New Access Token" (Big blue button).
+    </p>
+    <form id="settings-form">
+      <div>
+        <label for="domain">Canvas domain (e.g. district.instructure.com)</label><br>
+        <input type="text" id="domain" placeholder="district.instructure.com" required>
+      </div>
+      <div>
+        <label for="token">Personal Access Token</label><br>
+        <input type="password" id="token" required>
+      </div>
+      <button type="submit">Save</button>
+      <button type="button" id="clear-settings">Clear saved data</button>
+    </form>
+  </div>
+</div>
 
 <script type="module" src="app.js"></script>
 </body>
