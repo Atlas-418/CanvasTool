@@ -22,6 +22,7 @@ Each person who uses the hosted page brings their own domain + token, so no shar
    ```
    Copy the resulting `*.workers.dev` URL.
 3. **Point the site at your worker**: open `app.js` and set `PROXY_URL` to the URL from step 2.
+   - Alternatively, the link already used in the repo will work. You only really need to do steps 2 & 3 if you need to change the worker.
 4. **Enable GitHub Pages**: repo Settings → Pages → deploy from `main` / root.
 5. Visit the page, open Settings, enter your Canvas domain (e.g. `district.instructure.com`) and the token from step 1.
 
@@ -38,9 +39,9 @@ Each person who uses the hosted page brings their own domain + token, so no shar
     - [ ] themes
 - [ ] onboarding page?
 - [ ] link assignments to the corresponding page in canvas
-- [ ] Figure out how to get proper Oauth
-  - dev key? idk
-  - can't ask user to generate api key due to TOS
+- [ ] Proper OAuth (needs a district Canvas admin to create a Developer Key — no self-service path exists)
+  - For now: each user generates their own PAT manually. This sits outside Canvas's stated preference (their policy asks devs not to have users hand over manually-generated tokens) — not pretending otherwise, just accepted as the realistic option without admin access
+  - Revisit if a district admin is ever willing to set one up
 
 ## Resources
 

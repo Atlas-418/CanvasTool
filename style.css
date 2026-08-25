@@ -153,3 +153,6 @@ input[name="course-view"]:checked + .course-screen {
 .course-card-overdue {
   color: var(--color-overdue);
 }
+.course-card-overdue-none {
+  color: var(--color-text);
+}

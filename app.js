@@ -342,8 +342,9 @@ async function loadCourses() {
       const bottom = document.createElement("div");
       bottom.className = "course-card-bottom";
 
+      const hasOverdue = summary && summary.overdue > 0;
       const overdueSpan = document.createElement("span");
-      overdueSpan.className = "course-card-overdue";
+      overdueSpan.className = hasOverdue ? "course-card-overdue" : "course-card-overdue course-card-overdue-none";
       overdueSpan.textContent = `Overdue: ${summary ? summary.overdue : "—"}`;
       bottom.appendChild(overdueSpan);
 
