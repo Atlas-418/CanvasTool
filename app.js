@@ -45,6 +45,73 @@ function getSavedCredentials() {
   return domain && token ? { domain, token } : null;
 }
 
+function canvasFetch(path, creds) {
+  return fetch(`${PROXY_URL}${path}`, {
+    headers: {
+      "Authorization": `Bearer ${creds.token}`,
+      "X-Canvas-Domain": creds.domain,
+    },
+  });
+}
+
+function formatDueDate(dueAt) {
+  if (!dueAt) return "No due date";
+  return new Date(dueAt).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatAssignmentStatus(assignment) {
+  const submission = assignment.submission;
+  if (!submission) return "";
+  if (submission.workflow_state === "graded") {
+    const possible = assignment.points_possible;
+    return `Graded: ${submission.score}${possible !== undefined ? `/${possible}` : ""}`;
+  }
+  if (submission.missing) return "Missing";
+  if (submission.workflow_state === "submitted") return "Submitted";
+  return "Not submitted";
+}
+
+async function loadAssignments(course, listEl) {
+  listEl.innerHTML = "<li>Loading assignments...</li>";
+
+  const creds = getSavedCredentials();
+  const path = `/api/v1/courses/${course.id}/assignments?order_by=due_at&include[]=submission`;
+
+  let response;
+  try {
+    response = await canvasFetch(path, creds);
+  } catch (err) {
+    listEl.innerHTML = "<li>Network error loading assignments.</li>";
+    return false;
+  }
+
+  if (!response.ok) {
+    listEl.innerHTML = `<li>Failed to load assignments (${response.status}).</li>`;
+    return false;
+  }
+
+  const assignments = await response.json();
+
+  if (!Array.isArray(assignments) || assignments.length === 0) {
+    listEl.innerHTML = "<li>No assignments.</li>";
+    return true;
+  }
+
+  listEl.innerHTML = "";
+  for (const assignment of assignments) {
+    const status = formatAssignmentStatus(assignment);
+    const li = document.createElement("li");
+    li.textContent = `${assignment.name} — Due: ${formatDueDate(assignment.due_at)}${status ? ` — ${status}` : ""}`;
+    listEl.appendChild(li);
+  }
+  return true;
+}
+
 async function loadCourses() {
   const creds = getSavedCredentials();
   if (!creds) {
@@ -96,8 +163,25 @@ async function loadCourses() {
     const gradeText = grade !== undefined && grade !== null ? grade : "—";
     const term = (course.term && course.term.name) || "";
 
+    const codeSuffix = course.course_code && course.course_code !== course.name
+      ? ` (${course.course_code})`
+      : "";
+
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = `${course.name}${codeSuffix} — ${term} — Grade: ${gradeText}`;
+    const assignmentList = document.createElement("ul");
+    details.appendChild(summary);
+    details.appendChild(assignmentList);
+
+    details.addEventListener("toggle", async () => {
+      if (details.open && !details.dataset.loaded) {
+        details.dataset.loaded = await loadAssignments(course, assignmentList) ? "true" : "";
+      }
+    });
+
     const li = document.createElement("li");
-    li.textContent = `${course.name} (${course.course_code}) — ${term} — Grade: ${gradeText}`;
+    li.appendChild(details);
     courseList.appendChild(li);
   }
 }
