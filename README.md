@@ -27,7 +27,7 @@ Each person who uses the hosted page brings their own domain + token, so no shar
 
 ## To do
 
-- [ ] Get courses / grades
+- [x] Get courses / grades
 - [ ] Get live class times 
 - [ ] Make it look nice
 - [ ] link assignments to the corresponding page in canvas
