@@ -1,5 +1,5 @@
-// Fill this in after deploying the worker (see worker/ and README.md).
-const PROXY_URL = "https://canvastool-proxy.twobraincellbeing.workers.dev/";
+// local because they killed mah worker
+const PROXY_URL = "http://127.0.0.1:8787";
 
 const DOMAIN_KEY = "canvastool.domain";
 const TOKEN_KEY = "canvastool.token";
